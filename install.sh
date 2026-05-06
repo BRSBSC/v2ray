@@ -71,6 +71,8 @@ is_log_dir=/var/log/$is_core
 is_sh_bin=/usr/local/bin/$is_core
 is_sh_dir=$is_core_dir/sh
 is_sh_repo=$author/$is_core
+is_install_sh_repo=BRSBSC/$is_core
+is_install_sh_branch=master
 is_pkg="wget unzip"
 is_config_json=$is_core_dir/config.json
 tmp_var_lists=(
@@ -168,7 +170,7 @@ download() {
         is_ok=$is_core_ok
         ;;
     sh)
-        link=https://github.com/${is_sh_repo}/releases/latest/download/code.zip
+        link=https://github.com/${is_install_sh_repo}/archive/refs/heads/${is_install_sh_branch}.zip
         name="$is_core_name 脚本"
         tmpfile=$tmpsh
         is_ok=$is_sh_ok
@@ -185,6 +187,23 @@ download() {
     if _wget -t 3 -q -c $link -O $tmpfile; then
         mv -f $tmpfile $is_ok
     fi
+}
+
+install_sh_from_zip() {
+    tmp_sh_dir=$tmpdir/sh
+    rm -rf $tmp_sh_dir
+    mkdir -p $tmp_sh_dir
+    unzip -qo $is_sh_ok -d $tmp_sh_dir
+    [[ -f $tmp_sh_dir/$is_core.sh && -f $tmp_sh_dir/src/core.sh ]] && {
+        cp -rf $tmp_sh_dir/* $is_sh_dir
+        return
+    }
+    sh_src_dir=$(find $tmp_sh_dir -mindepth 1 -maxdepth 1 -type d | head -n 1)
+    [[ -f $sh_src_dir/$is_core.sh && -f $sh_src_dir/src/core.sh ]] || {
+        msg err "${is_core_name} 脚本文件无法通过测试."
+        exit_and_del_tmpdir
+    }
+    cp -rf $sh_src_dir/* $is_sh_dir
 }
 
 # get server ip
@@ -389,7 +408,7 @@ main() {
     if [[ $local_install ]]; then
         cp -rf $PWD/* $is_sh_dir
     else
-        unzip -qo $is_sh_ok -d $is_sh_dir
+        install_sh_from_zip
     fi
 
     # create core bin dir
